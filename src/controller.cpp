@@ -7,97 +7,181 @@
 #include "environment.h"
 #include "controller.h"
 #include "gameObjectFactory.h"
+#include "interactionHandler.h"
+#include "flame.h"
+#include "bomber.h"
+#include "unit.h"
 
+static struct termios old_termios, new_termios;
 
-Controller::Controller(View& view) : _view(view){
+static void configure_terminal();
+static void reset_terminal();
+static int read_input();
+
+Controller::Controller(View &view) : _view(view)
+{
+
+    _objs.emplace_back(SimpleGameObjectFactory::playerGameObject());
+
+    for (int i = 0; i < 10; ++i)
+        _objs.emplace_back(SimpleGameObjectFactory::randomGameObject());
 }
 
-void Controller::run() {
-    // initial setup
-    std::cin.tie(0);
-    std::ios::sync_with_stdio(0);
+void Controller::run()
+{
+    std::cin.tie(nullptr);
+    std::ios::sync_with_stdio(false);
     configure_terminal();
 
-    // init state
     int input = -1;
     clock_t start, end;
-    
-    // Main loop
-    while (true) {
+
+    while (true)
+    {
         start = clock();
-        // game loop goes here
+
         input = read_input();
+        if (input == 27)
+            break;
+        handleInput(input);
 
-        // ESC to exit program
-        if(input==27)break;
-
-        this->handleInput(input);
+        handleBombExplosions_();
 
         _view.resetLatest();
-        for(GameObject* obj : _objs) 
+
+        for (auto it = _flames.begin(); it != _flames.end();)
         {
+            if (--it->timer <= 0)
+                it = _flames.erase(it);
+            else
+                ++it;
+        }
 
+        InteractionHandler::handleInteractions(_objs, _flames, _view);
+
+        for (GameObject *obj : _objs)
+        {
             obj->update();
-
             _view.updateGameObject(obj);
+        }
+
+        handleFlameCollisions_();
+
+        for (const Flame &flame : _flames)
+            _view.drawFire(flame.pos);
+        Position playerPos = _objs[0]->getPosition();
+
+        for (GameObject *obj : _objs)
+        {
+            if (dynamic_cast<Bomber *>(obj) && obj->getPosition() == playerPos)
+            {
+                gameOver_ = true;
+                break;
+            }
+        }
+
+        if (!gameOver_)
+        {
+            for (const Flame &f : _flames)
+            {
+                if (f.pos == playerPos)
+                {
+                    gameOver_ = true;
+                    break;
+                }
+            }
+        }
+
+        if (gameOver_)
+        {
+            _view.renderGameOver();
+            break;
         }
 
         _view.render();
 
-
         end = clock();
-
-        // frame rate normalization
-        double time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
-        if (time_taken > SPF) continue;
-        int frameDelay = int((SPF - time_taken) * 1000); // 0.1 seconds
-        if(frameDelay > 0) std::this_thread::sleep_for(std::chrono::milliseconds(frameDelay)); // frame delay
+        double time_taken = static_cast<double>(end - start) / CLOCKS_PER_SEC;
+        if (time_taken < SPF)
+        {
+            int frameDelay = int((SPF - time_taken) * 1000);
+            if (frameDelay > 0)
+                std::this_thread::sleep_for(std::chrono::milliseconds(frameDelay));
+        }
     }
-
 }
 
+void Controller::handleInput(int keyInput)
+{
+    if (keyInput == -1)
+        return;
 
+    if (keyInput == 'w' || keyInput == 'W')
+        _objs[0]->setDirection(UP);
+    if (keyInput == 'a' || keyInput == 'A')
+        _objs[0]->setDirection(LEFT);
+    if (keyInput == 's' || keyInput == 'S')
+        _objs[0]->setDirection(DOWN);
+    if (keyInput == 'd' || keyInput == 'D')
+        _objs[0]->setDirection(RIGHT);
 
-void Controller::handleInput(int keyInput){
-
-    // If there is no input, do nothing.
-    if(keyInput==-1)return;
-    
-
-    // TODO 
-    // handle key events.
+    if (keyInput == '\t')
+    {
+    }
 }
 
-void Controller::update(){
+void Controller::update() {}
 
+void Controller::handleBombExplosions_() {
+    for (GameObject* ptr : _objs) {
+        if (auto* b = dynamic_cast<Bomber*>(ptr);
+            b && b->shouldExplode()) {
+            b->explodeNow(_flames);
+        }
+    }
+}   
+
+
+void Controller::handleFlameCollisions_() {
+    for (auto it = _objs.begin(); it != _objs.end(); ) {
+    GameObject* obj = *it;   // pointer
+    bool burned = false;
+    for (const Flame& f : _flames) {
+        if (f.pos == obj->getPosition()) {
+            burned = true;
+            break;
+        }
+    }
+    if (burned) it = _objs.erase(it);
+    else        ++it;
 }
-void reset_terminal() {
-    printf("\e[m"); // reset color changes
-    printf("\e[?25h"); // show cursor
-    fflush(stdout);
+}
+
+static void reset_terminal()
+{
+    std::printf("\e[m");    // reset colors
+    std::printf("\e[?25h"); // show cursor
+    std::fflush(stdout);
     tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
 }
 
-// terminal initial configuration setup
-void configure_terminal() {
+static void configure_terminal()
+{
     tcgetattr(STDIN_FILENO, &old_termios);
-	new_termios = old_termios; // save it to be able to reset on exit
-    
-    new_termios.c_lflag &= ~(ICANON | ECHO); // turn off echo + non-canonical mode
+    new_termios = old_termios;               // for later restore
+    new_termios.c_lflag &= ~(ICANON | ECHO); // non-canonical, no echo
     new_termios.c_cc[VMIN] = 0;
     new_termios.c_cc[VTIME] = 0;
-
     tcsetattr(STDIN_FILENO, TCSANOW, &new_termios);
 
-    printf("\e[?25l"); // hide cursor
+    std::printf("\e[?25l"); // hide cursor
     std::atexit(reset_terminal);
 }
 
-
-int read_input() {
-    fflush(stdout);
-   	char buf[4096]; // maximum input buffer
-	int n = read(STDIN_FILENO, buf, sizeof(buf));
+static int read_input()
+{
+    char buf[4096];
+    int n = read(STDIN_FILENO, buf, sizeof(buf));
     return n > 0 ? buf[n - 1] : -1;
 }
 

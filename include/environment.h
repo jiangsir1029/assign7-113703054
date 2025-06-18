@@ -10,3 +10,4 @@ constexpr int WINDOW_PIXEL_HEIGHT = GAME_WINDOW_HEIGHT;
 
 constexpr double SPF = 1; // Second Per Frame 
 #endif
+

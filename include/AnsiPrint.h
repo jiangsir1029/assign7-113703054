@@ -30,3 +30,4 @@ std::string AnsiPrint(const char* str,
                       bool blinking = false);
 
 #endif  // _ANSIPRINT_H
+

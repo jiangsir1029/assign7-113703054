@@ -3,6 +3,7 @@
 #include "view.h"
 #include "controller.h"
 #include "AnsiPrint.h"
+#include <ctime>
 /**
  * Print my id
  * */
@@ -16,11 +17,9 @@ PrintMyID(std::string studId) {
 
 
 int main(){
-    // TODO 
-    // Integrate the Simple MVC Pattern to run the program.
-
-
-    // TODO
-    // change to your student ID.
-    PrintMyID("1137030XX");
+	std::srand(static_cast<unsigned>(std::time(nullptr)));
+    View view;
+    Controller controller(view);
+    controller.run();
+    PrintMyID("113703054");
 }

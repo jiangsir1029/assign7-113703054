@@ -13,6 +13,8 @@ public:
     void render();
     void updateGameObject(GameObject*);
     void resetLatest();
+        void drawFire(Position pos);
+    void renderGameOver();
 private:
     int _termWidth;
     int _termHeight;

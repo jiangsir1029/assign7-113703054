@@ -5,28 +5,30 @@
 #include <vector>
 #include "view.h"
 #include "gameObject.h"
-
+#include "flame.h"
 class Controller{
 
 public:
-       
+
     Controller(View&);
     void run();
+	void handleBombExplosions_();   
+	void handleFlameCollisions_();  
 private:
 
     void handleInput(int);
-    void update();
-
+    void update();   
     // Model
     std::vector<GameObject*> _objs;
+        std::vector<Flame> _flames;
+        bool gameOver_ = false;  
 
     // View
-    View& _view; 
+    View& _view;
 };
 
-static struct termios old_termios, new_termios;
-void reset_terminal();
-void configure_terminal();
-int read_input();
+
+
 
 #endif
+

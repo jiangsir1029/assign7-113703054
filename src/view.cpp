@@ -22,7 +22,7 @@ int displayWidth(const std::string& utf8) {
 
 View::View() {
     std::setlocale(LC_ALL, "");
-    
+
     auto make_str_buf = [] {
         return std::vector<std::vector<std::string>>(
             GAME_WINDOW_HEIGHT, std::vector<std::string>(GAME_WINDOW_WIDTH, ""));
@@ -103,10 +103,10 @@ void View::render(){
                 frame += AnsiPrint(" ", Color::NOCHANGE, bg, false, false);
             }
 
-            // icon 
+            // icon
             frame += AnsiPrint(txt.c_str(), fg, bg, false, false);
 
-            // Right 
+            // Right
             for (int p = 0; p < padRight; ++p) {
                 frame += AnsiPrint(" ", Color::NOCHANGE, bg, false, false);
             }
@@ -150,4 +150,15 @@ std::pair<int,int> View::get_terminal_size() {
     }
     return std::make_pair(rows, cols);
 }
-
+void View::drawFire(Position pos) {
+    if (pos.y() >= 0 && pos.y() < GAME_WINDOW_HEIGHT &&
+        pos.x() >= 0 && pos.x() < GAME_WINDOW_WIDTH) {
+        latest_map[pos.y()][pos.x()] = "*";
+        latest_fg_color[pos.y()][pos.x()] = RED;
+        latest_bg_color[pos.y()][pos.x()] = NOCHANGE;
+    }
+}
+void View::renderGameOver() {
+    resetLatest();
+    std::cout << "\n\n   *** GAME OVER ***\n\n";
+}

@@ -1,4 +1,8 @@
-// TODO 
-// Finish the declaration of IconFactory that
-// 1. offers some methods to create an Icon.
-// 2. encapsulates the constructor from the caller. 
+#include "icon.h"
+
+class IconFactory {
+
+public:
+  static Icon NxMColor(Size size, Color color);
+};
+

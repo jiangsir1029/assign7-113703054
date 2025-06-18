@@ -1,5 +1,10 @@
-// TODO 
-// Finish the declaration of GameObjectFactory that
-// 1. offers some methods to create a GameObject.
-// 2. encapsulates the constructor from the caller. 
+#include "gameObject.h"
+#include "player.h"
+#include "bomber.h"
+
+struct SimpleGameObjectFactory {
+    
+    static GameObject* playerGameObject();
+    static GameObject* randomGameObject();
+};
 
